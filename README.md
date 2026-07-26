@@ -1,4 +1,4 @@
-# SWaP-C Down-Selection Advisor (v2 — attritable-first)
+# SWaP-C Down-Selection Advisor
 
 BLUF: Offline RAG-backed down-selection tool for UAS and C-sUAS technology, retuned to surface and classify ultra-low SWaP-C platforms instead of programs of record. You supply four inputs. The tool returns a tier-classified, cost-exchange-justified recommendation as PDF and Excel.
 
