@@ -1,0 +1,79 @@
+{
+  "uas_groups": [
+    {
+      "group": 1,
+      "name": "Group 1 - Micro/Mini",
+      "max_weight_lb": 20,
+      "operating_altitude_ft_agl": 1200,
+      "max_speed_kt": 100,
+      "typical_endurance_min": [15, 90],
+      "typical_range_km": [5, 15],
+      "estimated_unit_cost_usd": [500, 50000],
+      "median_threat_cost_usd": 3000,
+      "swap_c_estimate": {"size": "Man-packable, under 20 lb", "weight_lb": [1, 20], "power_w": [50, 500], "cost_usd": [500, 50000]},
+      "representative_threats": ["DJI Mavic/Matrice", "FPV racing quads", "fiber-optic FPV", "Autel EVO"],
+      "affordable_defeat_ceiling_usd": 3000,
+      "notes": "Highest-density threat class worldwide and the hardest exchange problem: a $500 fiber-optic FPV cannot be economically met with any kinetic interceptor. Reusable EW, smart optics, and acoustic cueing are the only effectors that win the math. Fiber and autonomous variants defeat RF-only defeat systems entirely."
+    },
+    {
+      "group": 2,
+      "name": "Group 2 - Small",
+      "max_weight_lb": 55,
+      "operating_altitude_ft_agl": 3500,
+      "max_speed_kt": 250,
+      "typical_endurance_min": [60, 240],
+      "typical_range_km": [15, 80],
+      "estimated_unit_cost_usd": [25000, 400000],
+      "median_threat_cost_usd": 60000,
+      "swap_c_estimate": {"size": "Two-person lift or small vehicle launch", "weight_lb": [21, 55], "power_w": [300, 2000], "cost_usd": [25000, 400000]},
+      "representative_threats": ["ScanEagle-class", "Orlan-10", "Lancet-class loitering munition", "heavy-lift quadcopter"],
+      "affordable_defeat_ceiling_usd": 20000,
+      "notes": "Fixed-wing ISR and heavier attack payloads. Faster and higher than Group 1, stressing detection timelines for point defense. Threat cost is high enough that T1 attritable interceptors return a strongly favorable exchange."
+    },
+    {
+      "group": 3,
+      "name": "Group 3 - Medium",
+      "max_weight_lb": 1320,
+      "operating_altitude_ft_agl": 18000,
+      "max_speed_kt": 250,
+      "typical_endurance_min": [240, 900],
+      "typical_range_km": [80, 1500],
+      "estimated_unit_cost_usd": [30000, 5000000],
+      "median_threat_cost_usd": 40000,
+      "swap_c_estimate": {"size": "Trailer or runway launch", "weight_lb": [56, 1320], "power_w": [2000, 20000], "cost_usd": [30000, 5000000]},
+      "representative_threats": ["Shahed-136 OWA", "Mohajer-6", "TB2-class"],
+      "affordable_defeat_ceiling_usd": 15000,
+      "notes": "OWA cruise-missile-like profiles and armed ISR. Note the cost anomaly: Shahed-class OWA sits at the low end of this group's cost band at $30-50K despite Group 3 performance, which is precisely why million-dollar interceptors lose. Handheld EW is ineffective; kinetic or HPM required."
+    },
+    {
+      "group": 4,
+      "name": "Group 4 - Large",
+      "max_weight_lb": 99999,
+      "operating_altitude_ft_agl": 18000,
+      "max_speed_kt": 999,
+      "typical_endurance_min": [900, 2400],
+      "typical_range_km": [1500, 5000],
+      "estimated_unit_cost_usd": [5000000, 30000000],
+      "median_threat_cost_usd": 12000000,
+      "swap_c_estimate": {"size": "Runway-dependent, over 1320 lb, below FL180", "weight_lb": [1321, 30000], "power_w": [20000, 100000], "cost_usd": [5000000, 30000000]},
+      "representative_threats": ["MQ-1 analog", "Wing Loong II", "CH-4"],
+      "affordable_defeat_ceiling_usd": 2000000,
+      "notes": "Persistent armed ISR. Threat value is high enough that exquisite interceptors are economically justified, inverting the attritable logic. Engagement transitions to traditional air defense; C-sUAS systems contribute cueing only."
+    },
+    {
+      "group": 5,
+      "name": "Group 5 - Largest",
+      "max_weight_lb": 99999,
+      "operating_altitude_ft_agl": 60000,
+      "max_speed_kt": 999,
+      "typical_endurance_min": [1200, 2400],
+      "typical_range_km": [5000, 15000],
+      "estimated_unit_cost_usd": [30000000, 200000000],
+      "median_threat_cost_usd": 60000000,
+      "swap_c_estimate": {"size": "Runway-dependent, above FL180 operations", "weight_lb": [1321, 40000], "power_w": [50000, 200000], "cost_usd": [30000000, 200000000]},
+      "representative_threats": ["MQ-9 analog", "WZ-7", "GJ-11 class"],
+      "affordable_defeat_ceiling_usd": 10000000,
+      "notes": "Strategic ISR and strike. Defeated by integrated air and missile defense, not C-sUAS systems. Attritable effectors are irrelevant at this tier."
+    }
+  ]
+}

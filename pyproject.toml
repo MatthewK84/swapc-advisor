@@ -1,0 +1,104 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "swapc-advisor"
+version = "2.0.0"
+description = "Attritable-first SWaP-C down-selection advisor for UAS and C-sUAS technology"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Matthew Kirchhoff" }]
+keywords = ["counter-uas", "c-uas", "swap-c", "defense", "rag", "attritable"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "reportlab>=4.0",
+    "openpyxl>=3.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[project.scripts]
+swapc-advisor = "swapc_advisor.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/MatthewK84/swapc-advisor"
+Issues = "https://github.com/MatthewK84/swapc-advisor/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+swapc_advisor = ["py.typed", "data/*.json"]
+
+# --- Static analysis: Principle 5 ---
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "ARG",  # unused arguments
+    "SIM",  # flake8-simplify
+    "PTH",  # use pathlib, not os.path
+    "RET",  # no else after return
+    "TRY",  # exception handling hygiene
+    "PL",   # pylint
+    "S",    # bandit security
+    "N",    # pep8 naming
+    "ANN",  # missing type annotations
+]
+ignore = [
+    "ANN401",  # Any is already banned by convention, not needed here
+    "TRY003",  # long messages inside raise are intentional and readable
+    "PLR0913", # argument count governed by function-size rule instead
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "ANN001", "ANN201", "PLR2004"]
+
+[tool.ruff.lint.pylint]
+max-branches = 8
+max-statements = 40
+max-returns = 6
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unreachable = true
+warn_no_return = true
+disallow_any_explicit = false
+show_error_codes = true
+files = ["src/swapc_advisor"]
+
+[[tool.mypy.overrides]]
+module = ["reportlab.*", "openpyxl.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q --strict-markers"

@@ -1,0 +1,100 @@
+{
+  "mission_threads": [
+    {
+      "id": "fixed_site_defense",
+      "name": "Fixed-Site Base Defense (C-sUAS)",
+      "category": "counter_uas",
+      "target_groups": [1, 2, 3],
+      "typical_salvo_size": 12,
+      "exchange_ratio_target": 5.0,
+      "attritability_priority": "critical",
+      "description": "Layered detect-track-identify-defeat of Group 1-3 threats against an installation. Persistent 360-degree coverage with integrated C2 (FAAD C2 class). Saturation OWA and FPV raids make low cost per intercept the design driver, not single-shot performance.",
+      "key_requirements": ["persistent_coverage", "layered_defeat", "c2_integration", "low_cost_per_intercept", "saturation_resilience", "magazine_depth"],
+      "typical_engagement_range_km": [2, 15]
+    },
+    {
+      "id": "maneuver_force_protection",
+      "name": "Maneuver / Mobile Force Protection (C-sUAS)",
+      "category": "counter_uas",
+      "target_groups": [1, 2],
+      "typical_salvo_size": 4,
+      "exchange_ratio_target": 3.0,
+      "attritability_priority": "critical",
+      "description": "On-the-move and short-halt protection of maneuver formations against FPV and small ISR UAS. Vehicle-mounted or dismounted systems with minimal setup time and autonomous slew-to-cue. Every pound and watt competes with mission equipment.",
+      "key_requirements": ["on_the_move", "ultra_low_swap", "rapid_emplacement", "autonomous_cueing", "organic_to_squad"],
+      "typical_engagement_range_km": [0.5, 5]
+    },
+    {
+      "id": "critical_infrastructure",
+      "name": "Critical Infrastructure / Homeland Protection (C-sUAS)",
+      "category": "counter_uas",
+      "target_groups": [1, 2],
+      "typical_salvo_size": 2,
+      "exchange_ratio_target": 1.0,
+      "attritability_priority": "low",
+      "description": "Protection of domestic critical infrastructure and events under 10 USC 130i authorities. Low-collateral defeat, spectrum-compliant sensing, and forensic-quality track data for prosecution. Legal constraints outweigh cost exchange here.",
+      "key_requirements": ["low_collateral", "spectrum_compliant", "forensics", "passive_detection", "recoverable_effector"],
+      "typical_engagement_range_km": [1, 8]
+    },
+    {
+      "id": "maritime_port_defense",
+      "name": "Maritime / Port Defense (C-sUAS)",
+      "category": "counter_uas",
+      "target_groups": [1, 2, 3],
+      "typical_salvo_size": 8,
+      "exchange_ratio_target": 4.0,
+      "attritability_priority": "moderate",
+      "description": "Defense of vessels, ports, and sea lines of communication against aerial and hybrid UAS threats. Maritime clutter rejection, salt-fog hardening, and integration with shipboard combat systems. Magazine depth is bounded by hull space, not budget.",
+      "key_requirements": ["maritime_hardened", "clutter_rejection", "shipboard_integration", "long_range_detect", "compact_magazine"],
+      "typical_engagement_range_km": [3, 20]
+    },
+    {
+      "id": "owa_interdiction",
+      "name": "One-Way Attack (OWA) Interdiction (C-sUAS)",
+      "category": "counter_uas",
+      "target_groups": [2, 3],
+      "typical_salvo_size": 20,
+      "exchange_ratio_target": 8.0,
+      "attritability_priority": "critical",
+      "description": "Defeat of Shahed-class OWA UAS on cruise-missile-like profiles. Long-range detection, high-speed intercept, and magazine depth against salvo attacks. This is the thread where cost exchange is most decisive: the threat costs $30-50K and arrives in tens.",
+      "key_requirements": ["high_speed_intercept", "magazine_depth", "long_range_detect", "low_cost_per_intercept", "gps_denied_ops", "high_production_rate"],
+      "typical_engagement_range_km": [5, 40]
+    },
+    {
+      "id": "isr_recon",
+      "name": "Organic ISR / Reconnaissance (UAS)",
+      "category": "uas_employment",
+      "target_groups": [1, 2],
+      "typical_salvo_size": 1,
+      "exchange_ratio_target": 0.0,
+      "attritability_priority": "moderate",
+      "description": "Blue-force employment of Group 1-2 UAS for tactical ISR, route reconnaissance, and battle damage assessment. NDAA-compliant (Blue UAS) platforms with EO/IR, GPS-denied navigation, and ATAK integration. Attrition in contested airspace favors cheap airframes over exquisite ones.",
+      "key_requirements": ["blue_uas_compliant", "eo_ir", "atak_integration", "gps_denied_ops", "low_training_burden", "acceptable_loss_rate"],
+      "typical_engagement_range_km": [5, 40]
+    },
+    {
+      "id": "precision_strike",
+      "name": "Precision Strike / Loitering Munition (UAS)",
+      "category": "uas_employment",
+      "target_groups": [1, 2],
+      "typical_salvo_size": 6,
+      "exchange_ratio_target": 3.0,
+      "attritability_priority": "critical",
+      "description": "Blue-force employment of loitering munitions and armed sUAS for precision effects against personnel, vehicles, and fortifications. Terminal guidance in GPS-denied and EW-contested environments. Round cost must be proportionate to target value.",
+      "key_requirements": ["terminal_guidance", "gps_denied_ops", "ew_resilient", "man_in_loop_abort", "proportionate_round_cost"],
+      "typical_engagement_range_km": [10, 100]
+    },
+    {
+      "id": "logistics_resupply",
+      "name": "Contested Logistics / Resupply (UAS)",
+      "category": "uas_employment",
+      "target_groups": [2, 3],
+      "typical_salvo_size": 1,
+      "exchange_ratio_target": 0.0,
+      "attritability_priority": "moderate",
+      "description": "Autonomous aerial resupply of forward positions across contested or austere terrain. Payload capacity, range, and autonomous route planning dominate. Loss rates in contested airspace make cost per delivered pound the real metric.",
+      "key_requirements": ["payload_capacity", "autonomous_routing", "austere_landing", "gps_denied_ops", "cost_per_delivered_pound"],
+      "typical_engagement_range_km": [20, 200]
+    }
+  ]
+}
