@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "swapc-advisor"
-version = "2.0.0"
+version = "2.1.0"
 description = "Attritable-first SWaP-C down-selection advisor for UAS and C-sUAS technology"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -34,6 +34,7 @@ dev = [
 
 [project.scripts]
 swapc-advisor = "swapc_advisor.cli:main"
+swapc-validate = "swapc_advisor.validate:main"
 
 [project.urls]
 Homepage = "https://github.com/MatthewK84/swapc-advisor"

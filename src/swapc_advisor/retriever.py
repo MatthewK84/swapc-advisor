@@ -80,6 +80,11 @@ EXPANSIONS: Final[dict[str, tuple[str, ...]]] = {
     "por": ("program", "record", "exquisite", "baseline", "prime"),
     "lightweight": ("man", "packable", "portable", "low", "swap"),
     "portable": ("man", "packable", "lightweight", "low", "swap"),
+    "maritime": ("salt", "fog", "shipboard", "naval", "littoral", "island"),
+    "salvo": ("swarm", "saturation", "mass", "raid"),
+    "sensor": ("radar", "acoustic", "detect", "cue", "track", "enabler"),
+    "loitering": ("munition", "strike", "owa"),
+    "resupply": ("logistics", "cargo", "delivery", "payload"),
 }
 
 SECTION_HINTS: Final[dict[str, tuple[str, ...]]] = {

@@ -29,6 +29,7 @@ ACCENT: Final[colors.Color] = colors.HexColor("#1a3a5c")
 LIGHT_ROW: Final[colors.Color] = colors.HexColor("#eef2f6")
 WARN_BG: Final[colors.Color] = colors.HexColor("#fdf3e3")
 MAX_RANKED: Final[int] = 6
+OPEN_ENDED_KM: Final[float] = 999.0
 
 
 def _styles() -> StyleSheet1:
@@ -329,6 +330,98 @@ def _magazine_section(rec: Recommendation, styles: StyleSheet1) -> list[object]:
     return story
 
 
+def _sensitivity_section(rec: Recommendation, styles: StyleSheet1) -> list[object]:
+    """Rank stability under cost and Pk perturbation."""
+    if rec.sensitivity is None:
+        return []
+    sens = rec.sensitivity
+    story: list[object] = [
+        Paragraph("Sensitivity Analysis", styles["SectionHead"]),
+        Paragraph(
+            "Deterministic 3x3 grid: unit cost x0.5/x1.0/x1.5, Pk -0.15/0/+0.15. "
+            "Rank ranges show each candidate's best and worst position across "
+            "all nine scenarios.",
+            styles["Cell"],
+        ),
+        Spacer(1, 4),
+        Paragraph(sens.notes, styles["Warn"] if not sens.stable else styles["Cell"]),
+        Spacer(1, 5),
+    ]
+    rows: list[list[Paragraph]] = [
+        [Paragraph(f"<b>{h}</b>", styles["Cell"]) for h in ("System", "Rank Range", "Verdict")]
+    ]
+    for cand in rec.ranked:
+        eq_id: str = cand.equipment.equipment_id
+        low, high = sens.rank_ranges.get(eq_id, (0, 0))
+        verdict: str = "Stable" if low == high else f"Varies {low}-{high}"
+        rows.append(
+            [
+                Paragraph(cand.equipment.name, styles["Cell"]),
+                Paragraph(f"{low}-{high}", styles["Cell"]),
+                Paragraph(verdict, styles["Cell"]),
+            ]
+        )
+    table: Table = Table(rows, colWidths=[3.0 * inch, 1.2 * inch, 3.0 * inch])
+    table.setStyle(_grid_style())
+    story.append(table)
+    return story
+
+
+def _architecture_section(rec: Recommendation, styles: StyleSheet1) -> list[object]:
+    """Layered defense proposal with combined cost and leakage."""
+    if rec.architecture is None:
+        return []
+    arch = rec.architecture
+    story: list[object] = [
+        Paragraph("Layered Architecture Proposal", styles["SectionHead"]),
+        Paragraph(arch.notes, styles["Cell"]),
+        Spacer(1, 5),
+    ]
+    rows: list[list[Paragraph]] = [
+        [
+            Paragraph(f"<b>{h}</b>", styles["Cell"])
+            for h in ("Layer", "Band (km)", "System", "Effective Pk", "Magazine Cost")
+        ]
+    ]
+    for layer in arch.layers:
+        band: str = f"{layer.band_range_km[0]:.0f}-{layer.band_range_km[1]:.0f}"
+        if layer.band_range_km[1] >= OPEN_ENDED_KM:
+            band = f"{layer.band_range_km[0]:.0f}+"
+        rows.append(
+            [
+                Paragraph(layer.band, styles["Cell"]),
+                Paragraph(band, styles["Cell"]),
+                Paragraph(layer.system_name, styles["Cell"]),
+                Paragraph(f"{layer.effective_pk:.2f}", styles["Cell"]),
+                Paragraph(f"${layer.magazine_cost_usd:,.0f}", styles["Cell"]),
+            ]
+        )
+    rows.append(
+        [
+            Paragraph("<b>Sensor</b>", styles["Cell"]),
+            Paragraph("-", styles["Cell"]),
+            Paragraph(arch.sensor_name, styles["Cell"]),
+            Paragraph("-", styles["Cell"]),
+            Paragraph(f"${arch.sensor_cost_usd:,.0f}", styles["Cell"]),
+        ]
+    )
+    table: Table = Table(
+        rows, colWidths=[0.8 * inch, 0.9 * inch, 2.6 * inch, 1.0 * inch, 1.9 * inch]
+    )
+    table.setStyle(_grid_style())
+    story.append(table)
+    story.append(Spacer(1, 4))
+    story.append(
+        Paragraph(
+            f"<b>Total architecture magazine cost: "
+            f"${arch.total_magazine_cost_usd:,.0f}. Leakage: "
+            f"{arch.leakage_probability:.1%}.</b>",
+            styles["Cell"],
+        )
+    )
+    return story
+
+
 def _watch_section(rec: Recommendation, styles: StyleSheet1) -> list[object]:
     """Risks and data-confidence caveats for the top candidates."""
     flagged: tuple[ScoredCandidate, ...] = tuple(
@@ -378,6 +471,8 @@ def write_pdf(rec: Recommendation, out_path: Path, disclaimer: str) -> Path:
     story.extend(_enabler_section(rec, styles))
     story.extend(_baseline_section(rec, styles))
     story.extend(_magazine_section(rec, styles))
+    story.extend(_sensitivity_section(rec, styles))
+    story.extend(_architecture_section(rec, styles))
     story.extend(_watch_section(rec, styles))
     story.extend(_context_section(rec, styles))
     story.append(Spacer(1, 8))

@@ -9,9 +9,13 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+import json
+import shutil
+
 from swapc_advisor.cost_model import (
     analyze_exchange,
     cost_per_defeat,
+    effective_pk,
     is_enabler,
     rounds_per_defeat,
 )
@@ -22,8 +26,11 @@ from swapc_advisor.knowledge_base import (
 )
 from swapc_advisor.models import Equipment, Query, ValidationError
 from swapc_advisor.recommender import recommend, validate_query
+from swapc_advisor.report_pdf import write_pdf
+from swapc_advisor.report_xlsx import write_xlsx
 from swapc_advisor.retriever import HybridRetriever, expand_query, tokenize
 from swapc_advisor.taxonomy import classify, tier_rank, within_ceiling
+from swapc_advisor.validate import validate_data
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "src" / "swapc_advisor" / "data"
 
@@ -86,20 +93,26 @@ def test_tier_ceiling_logic() -> None:
 
 
 def test_rounds_per_defeat_inverts_pk(kb) -> None:
-    item = _item(kb, "general_cherry_bullet")  # Pk 0.45
-    assert 2.2 < rounds_per_defeat(item) < 2.3
+    item = _item(kb, "general_cherry_bullet")
+    thread = kb.find_thread("owa_interdiction")  # groups 2,3 -> worst pk 0.40
+    assert thread is not None
+    assert 2.4 < rounds_per_defeat(item, thread) < 2.6
 
 
 def test_reusability_amortizes_cost(kb) -> None:
     """A recoverable interceptor must cost less per defeat than its sticker."""
     road = _item(kb, "roadrunner_m")  # $500K, 4 uses, Pk 0.85
-    assert cost_per_defeat(road) < road.swap_c.unit_cost_usd
+    thread = kb.find_thread("owa_interdiction")
+    assert thread is not None
+    assert cost_per_defeat(road, thread) < road.swap_c.unit_cost_usd
 
 
 def test_hpm_beats_sticker_price_on_exchange(kb) -> None:
     """Leonidas has the worst unit cost but must not have the worst economics."""
-    hpm = cost_per_defeat(_item(kb, "leonidas"))
-    coyote = cost_per_defeat(_item(kb, "coyote_blk2"))
+    thread = kb.find_thread("fixed_site_defense")
+    assert thread is not None
+    hpm = cost_per_defeat(_item(kb, "leonidas"), thread)
+    coyote = cost_per_defeat(_item(kb, "coyote_blk2"), thread)
     assert hpm < coyote
 
 
@@ -282,3 +295,107 @@ def test_bluf_recommends_sensor_pairing(kb) -> None:
     q = Query("owa_interdiction", 600000.0, 0.0, 5.0, "CENTCOM")
     rec = recommend(kb, q)
     assert "Pair with" in rec.summary
+
+
+# --- v2.1: per-group Pk, asset value, sensitivity, architecture, validation ---
+
+
+def test_effective_pk_uses_worst_relevant_group(kb) -> None:
+    """OWA interdiction engages Groups 2-3; Merops must plan on its G3 Pk."""
+    merops = _item(kb, "merops_as3")  # {1:0.70, 2:0.65, 3:0.60}
+    owa = kb.find_thread("owa_interdiction")
+    maneuver = kb.find_thread("maneuver_force_protection")
+    assert owa is not None and maneuver is not None
+    assert effective_pk(merops, owa) == 0.60
+    assert effective_pk(merops, maneuver) == 0.65
+
+
+def test_asset_value_raises_exchange_ratio(kb) -> None:
+    """Defending a $40M asset must justify effectors a bare threat cannot."""
+    thread = kb.find_thread("critical_infrastructure")
+    aor = kb.find_aor("NORTHCOM")
+    assert thread is not None and aor is not None
+    fortem = _item(kb, "fortem_f700")
+    bare = analyze_exchange(fortem, thread, aor, kb.uas_groups)
+    defended = analyze_exchange(fortem, thread, aor, kb.uas_groups, asset_value_usd=40_000_000.0)
+    assert defended.exchange_ratio > bare.exchange_ratio
+    assert defended.favorable
+
+
+def test_sensitivity_runs_and_is_deterministic(kb) -> None:
+    q = Query("owa_interdiction", 600000.0, 0.0, 5.0, "CENTCOM")
+    a = recommend(kb, q)
+    b = recommend(kb, q)
+    assert a.sensitivity is not None and b.sensitivity is not None
+    assert a.sensitivity.scenarios == 9
+    assert a.sensitivity.top_pick_wins == b.sensitivity.top_pick_wins
+    assert a.sensitivity.rank_ranges == b.sensitivity.rank_ranges
+
+
+def test_sensitivity_rank_ranges_cover_all_effectors(kb) -> None:
+    q = Query("owa_interdiction", 600000.0, 0.0, 5.0, "CENTCOM")
+    rec = recommend(kb, q)
+    assert rec.sensitivity is not None
+    for cand in rec.ranked:
+        low, high = rec.sensitivity.rank_ranges[cand.equipment.equipment_id]
+        assert 1 <= low <= high
+
+
+def test_architecture_builds_layers(kb) -> None:
+    q = Query("fixed_site_defense", 30000000.0, 0.0, 0.0, "CENTCOM")
+    rec = recommend(kb, q)
+    assert rec.architecture is not None
+    assert 1 <= len(rec.architecture.layers) <= 3
+    assert 0.0 <= rec.architecture.leakage_probability < 1.0
+    assert rec.architecture.total_magazine_cost_usd > 0
+
+
+def test_validator_clean_on_shipped_data() -> None:
+    assert validate_data(DATA_DIR) == []
+
+
+def test_validator_rejects_unknown_field(tmp_path) -> None:
+    """The guard born from observed schema drift: foreign fields must fail."""
+    work = tmp_path / "data"
+    shutil.copytree(DATA_DIR, work)
+    doc = json.loads((work / "equipment.json").read_text())
+    doc["equipment"][0]["pk_by_group"] = {"1": 0.5}
+    (work / "equipment.json").write_text(json.dumps(doc))
+    errors = validate_data(work)
+    assert any("unknown field" in e for e in errors)
+
+
+def test_validator_rejects_bad_thread_reference(tmp_path) -> None:
+    work = tmp_path / "data"
+    shutil.copytree(DATA_DIR, work)
+    doc = json.loads((work / "equipment.json").read_text())
+    doc["equipment"][0]["mission_threads"] = ["underwater_ops"]
+    (work / "equipment.json").write_text(json.dumps(doc))
+    errors = validate_data(work)
+    assert any("unknown mission thread" in e for e in errors)
+
+
+# --- report writers: end-to-end file generation ---
+
+
+def test_reports_generate_end_to_end(kb, tmp_path) -> None:
+    """Both writers must produce nonzero files for a real recommendation.
+
+    Exists because a schema change once broke the Excel writer while every
+    other test stayed green: nothing exercised the report layer.
+    """
+    q = Query("owa_interdiction", 600000.0, 5.0, 8.0, "CENTCOM")
+    rec = recommend(kb, q)
+    pdf = write_pdf(rec, tmp_path / "r.pdf", kb.disclaimer)
+    xlsx = write_xlsx(rec, tmp_path / "r.xlsx", kb.disclaimer)
+    assert pdf.stat().st_size > 5000
+    assert xlsx.stat().st_size > 5000
+
+
+def test_reports_generate_for_empty_result(kb, tmp_path) -> None:
+    """Writers must not crash when nothing passes the gates."""
+    q = Query("isr_recon", 500.0, 9999.0, 9999.0, "CENTCOM")
+    rec = recommend(kb, q)
+    assert not rec.ranked
+    assert write_pdf(rec, tmp_path / "e.pdf", kb.disclaimer).stat().st_size > 0
+    assert write_xlsx(rec, tmp_path / "e.xlsx", kb.disclaimer).stat().st_size > 0

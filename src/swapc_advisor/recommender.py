@@ -12,6 +12,7 @@ from __future__ import annotations
 import math
 from typing import Final
 
+from .architecture import build_architecture
 from .cost_model import analyze_exchange, exchange_score, is_enabler
 from .knowledge_base import KnowledgeBase, build_corpus
 from .models import (
@@ -25,10 +26,12 @@ from .models import (
     Recommendation,
     RetrievedDoc,
     ScoredCandidate,
+    SensitivityResult,
     UasGroup,
     ValidationError,
 )
 from .retriever import HybridRetriever
+from .sensitivity import analyze_sensitivity
 from .taxonomy import classify, within_ceiling
 
 TOP_CONTEXT_DOCS: Final[int] = 8
@@ -222,7 +225,9 @@ def _score_candidate(
 ) -> ScoredCandidate:
     """Apply hard gates, compute economics, then the weighted posture score."""
     cls: Classification = classify(item, kb.taxonomy)
-    exchange: ExchangeAnalysis = analyze_exchange(item, thread, aor, kb.uas_groups)
+    exchange: ExchangeAnalysis = analyze_exchange(
+        item, thread, aor, kb.uas_groups, asset_value_usd=query.asset_value_usd
+    )
     weights: dict[str, float] = posture.weights
     evidence: float = kb.taxonomy.evidence_confidence.get(item.evidence_grade, 0.3)
     breakdown: dict[str, float] = {
@@ -274,6 +279,7 @@ def _summary(
     ranked: tuple[ScoredCandidate, ...],
     enablers: tuple[ScoredCandidate, ...],
     baselines: tuple[ScoredCandidate, ...],
+    sensitivity: SensitivityResult | None = None,
 ) -> str:
     """BLUF summary paragraph anchored on cost exchange, not unit cost."""
     if not ranked:
@@ -295,6 +301,14 @@ def _summary(
                 f"cheaper per defeat (${top.exchange.cost_per_defeat_usd:,.0f} versus "
                 f"${base.exchange.cost_per_defeat_usd:,.0f})."
             )
+    stability: str = ""
+    if sensitivity is not None and not sensitivity.stable:
+        stability = (
+            f" CAUTION: this pick holds rank 1 in only "
+            f"{sensitivity.top_pick_wins} of {sensitivity.scenarios} "
+            f"data-uncertainty scenarios; treat the top candidates as a "
+            f"trade space until inputs firm up."
+        )
     alternates: str = ", ".join(c.equipment.name for c in ranked[1:3])
     alt: str = f" Alternate effectors: {alternates}." if alternates else ""
     cue: str = ""
@@ -313,7 +327,8 @@ def _summary(
         f"${top.equipment.swap_c.unit_cost_usd:,.0f} per unit. Cost per defeat is "
         f"${top.exchange.cost_per_defeat_usd:,.0f} for a "
         f"{top.exchange.exchange_ratio:.1f}:1 exchange against a "
-        f"${top.exchange.threat_cost_usd:,.0f} threat.{delta}{alt}{cue}"
+        f"${top.exchange.threat_cost_usd:,.0f} value denied.{delta}{alt}{cue}"
+        f"{stability}"
     )
 
 
@@ -351,6 +366,17 @@ def recommend(kb: KnowledgeBase, query: Query) -> Recommendation:
     rejected: list[ScoredCandidate] = [c for c in relevant if not c.hard_pass]
     rejected.sort(key=lambda c: c.total_score, reverse=True)
     groups: tuple[UasGroup, ...] = kb.groups_by_number(thread.target_groups)
+    sensitivity: SensitivityResult | None = None
+    if ranked:
+        effector_items = tuple(c.equipment for c in ranked)
+        top_id: str = ranked[0].equipment.equipment_id
+
+        def _rescore(item: Equipment) -> ScoredCandidate:
+            return _score_candidate(
+                item, query=query, aor=aor, thread=thread, posture=posture, kb=kb
+            )
+
+        sensitivity = analyze_sensitivity(effector_items, top_id, _rescore)
     return Recommendation(
         query=query,
         posture=posture,
@@ -363,6 +389,8 @@ def recommend(kb: KnowledgeBase, query: Query) -> Recommendation:
         rejected=tuple(rejected),
         retrieved_context=_retrieve_context(kb, query, aor, thread),
         tier_distribution=_tier_distribution(ranked),
+        sensitivity=sensitivity,
+        architecture=build_architecture(ranked, enablers, thread),
         summary=_summary(
             query=query,
             aor=aor,

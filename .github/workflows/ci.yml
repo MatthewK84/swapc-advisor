@@ -43,6 +43,9 @@ jobs:
       - name: Type check (mypy strict)
         run: mypy
 
+      - name: Validate knowledge base
+        run: swapc-validate
+
       - name: Test
         run: pytest
 

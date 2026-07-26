@@ -175,7 +175,7 @@ def _parse_equipment(entry: dict[str, Any]) -> Equipment:
         swap_c=swap,
         flight_time_min=float(entry["flight_time_min"]),
         effective_range_km=float(entry["effective_range_km"]),
-        single_shot_pk=float(entry["single_shot_pk"]),
+        single_shot_pk={int(k): float(v) for k, v in entry["single_shot_pk"].items()},
         uses_per_unit=int(entry["uses_per_unit"]),
         units_per_month=int(entry["units_per_month"]),
         evidence_grade=str(entry["evidence_grade"]),
@@ -290,6 +290,13 @@ def _aor_chunks(aor: Aor) -> list[Chunk]:
     ]
 
 
+def _pk_text(item: Equipment) -> str:
+    """Render per-group Pk for the retrieval corpus."""
+    if not item.single_shot_pk:
+        return "n/a (enabler)"
+    return " ".join(f"G{g}:{pk}" for g, pk in sorted(item.single_shot_pk.items()))
+
+
 def _equipment_chunks(item: Equipment) -> list[Chunk]:
     """Three chunks per system: profile, economics, and provenance limits."""
     return [
@@ -309,7 +316,7 @@ def _equipment_chunks(item: Equipment) -> list[Chunk]:
             item.name,
             "economics",
             f"{item.name} unit cost ${item.swap_c.unit_cost_usd:,.0f}, "
-            f"single-shot Pk {item.single_shot_pk}, {item.uses_per_unit} uses per "
+            f"single-shot Pk {_pk_text(item)}, {item.uses_per_unit} uses per "
             f"unit, production {item.units_per_month} per month. Attritable "
             f"expendable low cost interceptor economics magazine depth.",
         ),

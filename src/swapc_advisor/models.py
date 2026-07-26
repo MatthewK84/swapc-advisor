@@ -101,7 +101,7 @@ class Equipment:
     swap_c: SwapC
     flight_time_min: float
     effective_range_km: float
-    single_shot_pk: float
+    single_shot_pk: dict[int, float]
     uses_per_unit: int
     units_per_month: int
     evidence_grade: str
@@ -208,6 +208,7 @@ class Query:
     aor_id: str
     posture_id: str = "attritable_first"
     max_cost_tier: str = "T4"
+    asset_value_usd: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -238,6 +239,41 @@ class ScoredCandidate:
 
 
 @dataclass(frozen=True)
+class SensitivityResult:
+    """Rank stability of the effector list under deterministic perturbation."""
+
+    scenarios: int
+    top_pick_id: str
+    top_pick_wins: int
+    stable: bool
+    rank_ranges: dict[str, tuple[int, int]]
+    notes: str
+
+
+@dataclass(frozen=True)
+class ArchitectureLayer:
+    """One layer of a proposed layered defense."""
+
+    band: str
+    band_range_km: tuple[float, float]
+    system_name: str
+    effective_pk: float
+    magazine_cost_usd: float
+
+
+@dataclass(frozen=True)
+class LayeredArchitecture:
+    """Layered defense proposal with combined cost and leakage."""
+
+    layers: tuple[ArchitectureLayer, ...]
+    sensor_name: str
+    sensor_cost_usd: float
+    total_magazine_cost_usd: float
+    leakage_probability: float
+    notes: str
+
+
+@dataclass(frozen=True)
 class Recommendation:
     """Complete recommendation package for one query."""
 
@@ -252,4 +288,6 @@ class Recommendation:
     rejected: tuple[ScoredCandidate, ...]
     retrieved_context: tuple[RetrievedDoc, ...]
     tier_distribution: dict[str, int]
+    sensitivity: SensitivityResult | None
+    architecture: LayeredArchitecture | None
     summary: str

@@ -80,6 +80,14 @@ def build_parser(kb: KnowledgeBase) -> argparse.ArgumentParser:
         help="Hard ceiling on cost tier. Set T1 to exclude anything above attritable.",
     )
     parser.add_argument(
+        "--asset-value",
+        type=float,
+        default=0.0,
+        help="Value in USD of the asset being defended. Raises the exchange "
+        "numerator by expected damage prevented, so cheap threats against "
+        "high-value assets justify costlier effectors.",
+    )
+    parser.add_argument(
         "--data-dir",
         type=Path,
         default=default_data_dir(),
@@ -104,6 +112,8 @@ def run_query(kb: KnowledgeBase, query: Query, out_dir: Path) -> tuple[Path, Pat
     xlsx_path: Path = write_xlsx(rec, out_dir / f"{stem}.xlsx", kb.disclaimer)
     logger.info("%s", rec.summary)
     logger.info("Tier distribution: %s", rec.tier_distribution)
+    if rec.sensitivity is not None:
+        logger.info("Sensitivity: %s", rec.sensitivity.notes)
     logger.info("Wrote %s and %s", pdf_path, xlsx_path)
     return pdf_path, xlsx_path
 
@@ -138,6 +148,7 @@ def main(argv: list[str] | None = None) -> int:
         aor_id=args.aor,
         posture_id=args.posture,
         max_cost_tier=args.max_cost_tier,
+        asset_value_usd=args.asset_value,
     )
     try:
         run_query(kb, query, args.out_dir)

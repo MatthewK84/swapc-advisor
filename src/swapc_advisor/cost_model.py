@@ -19,20 +19,37 @@ MAX_ROUNDS_PER_DEFEAT: Final[float] = 20.0
 DAYS_PER_MONTH: Final[float] = 30.0
 FAVORABLE_RATIO: Final[float] = 1.0
 STRONG_RATIO: Final[float] = 10.0
+ASSET_DAMAGE_PROBABILITY: Final[float] = 0.25
 GOOD_RATIO: Final[float] = 3.0
 ENABLER_NEUTRAL_SCORE: Final[float] = 0.5
 
 
 def is_enabler(item: Equipment) -> bool:
     """True for sensors and C2 that detect or track but do not defeat."""
-    return item.single_shot_pk <= 0.0
+    return not item.single_shot_pk or all(v <= 0.0 for v in item.single_shot_pk.values())
 
 
-def rounds_per_defeat(item: Equipment) -> float:
-    """Expected rounds expended per successful defeat, from single-shot Pk."""
+def effective_pk(item: Equipment, thread: MissionThread) -> float:
+    """Conservative Pk: the minimum across groups this thread engages.
+
+    A round that is 0.7 against a hovering quadcopter is not 0.7 against a
+    Shahed closing at 185 km/h, so planning uses the worst relevant case.
+    """
     if is_enabler(item):
         return 0.0
-    pk: float = max(item.single_shot_pk, MIN_PK)
+    relevant: tuple[float, ...] = tuple(
+        item.single_shot_pk[g] for g in thread.target_groups if g in item.single_shot_pk
+    )
+    if relevant:
+        return min(relevant)
+    return min(item.single_shot_pk.values())
+
+
+def rounds_per_defeat(item: Equipment, thread: MissionThread) -> float:
+    """Expected rounds per defeat, from the worst relevant per-group Pk."""
+    if is_enabler(item):
+        return 0.0
+    pk: float = max(effective_pk(item, thread), MIN_PK)
     return min(1.0 / pk, MAX_ROUNDS_PER_DEFEAT)
 
 
@@ -42,11 +59,11 @@ def effective_round_cost(item: Equipment) -> float:
     return item.swap_c.unit_cost_usd / uses
 
 
-def cost_per_defeat(item: Equipment) -> float:
+def cost_per_defeat(item: Equipment, thread: MissionThread) -> float:
     """Total effector cost to achieve one defeat."""
     if is_enabler(item):
         return 0.0
-    return effective_round_cost(item) * rounds_per_defeat(item)
+    return effective_round_cost(item) * rounds_per_defeat(item, thread)
 
 
 def threat_cost_for(thread: MissionThread, aor: Aor, groups: tuple[UasGroup, ...]) -> float:
@@ -93,15 +110,26 @@ def _exchange_note(item: Equipment, ratio: float, threat_cost: float) -> str:
 
 
 def analyze_exchange(
-    item: Equipment, thread: MissionThread, aor: Aor, groups: tuple[UasGroup, ...]
+    item: Equipment,
+    thread: MissionThread,
+    aor: Aor,
+    groups: tuple[UasGroup, ...],
+    asset_value_usd: float = 0.0,
 ) -> ExchangeAnalysis:
-    """Full cost-exchange analysis of one system for one mission and AOR."""
+    """Full cost-exchange analysis of one system for one mission and AOR.
+
+    When asset_value_usd is supplied, the exchange numerator becomes the
+    value denied: threat cost plus expected damage prevented, modeled as
+    asset value times ASSET_DAMAGE_PROBABILITY. Defeating a $3K FPV that
+    would mission-kill a $40M aircraft is worth far more than $3K.
+    """
     threat_cost: float = threat_cost_for(thread, aor, groups)
-    per_defeat: float = cost_per_defeat(item)
+    value_denied: float = threat_cost + asset_value_usd * ASSET_DAMAGE_PROBABILITY
+    per_defeat: float = cost_per_defeat(item, thread)
     ratio: float = 0.0
     if per_defeat > 0.0:
-        ratio = threat_cost / per_defeat
-    rounds: float = rounds_per_defeat(item)
+        ratio = value_denied / per_defeat
+    rounds: float = rounds_per_defeat(item, thread)
     magazine_rounds: float = max(rounds * thread.typical_salvo_size, 1.0)
     magazine_cost: float = magazine_rounds * effective_round_cost(item)
     if is_enabler(item):
@@ -110,13 +138,13 @@ def analyze_exchange(
     return ExchangeAnalysis(
         rounds_per_defeat=round(rounds, 2),
         cost_per_defeat_usd=round(per_defeat, 2),
-        threat_cost_usd=threat_cost,
+        threat_cost_usd=value_denied,
         exchange_ratio=round(ratio, 3),
         favorable=ratio >= FAVORABLE_RATIO,
         magazine_rounds=int(math.ceil(magazine_rounds)),
         magazine_cost_usd=round(magazine_cost, 2),
         replenish_days=round(_replenish_days(item, magazine_rounds), 2),
-        notes=_exchange_note(item, ratio, threat_cost),
+        notes=_exchange_note(item, ratio, value_denied),
     )
 
 

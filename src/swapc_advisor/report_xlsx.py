@@ -57,6 +57,14 @@ def _money(sheet: Worksheet, row: int, col: int, value: float) -> None:
     target.alignment = WRAP
 
 
+def _pk_display(item: object) -> str:
+    """Render per-group Pk as a readable string for a cell."""
+    pk: dict[int, float] = getattr(item, "single_shot_pk", {})
+    if not pk:
+        return "n/a (enabler)"
+    return ", ".join(f"G{g}: {v:.2f}" for g, v in sorted(pk.items()))
+
+
 def _summary_sheet(book: Workbook, rec: Recommendation, disclaimer: str) -> None:
     """Sheet 1: query inputs, posture, BLUF, and disclaimer."""
     sheet: Worksheet = book.active
@@ -159,7 +167,7 @@ def _exchange_sheet(book: Workbook, rec: Recommendation) -> None:
         "Cost Tier",
         "Unit Cost (USD)",
         "Uses/Unit",
-        "Single-Shot Pk",
+        "Pk by Group",
         "Rounds/Defeat",
         "Cost per Defeat (USD)",
         "Threat Cost (USD)",
@@ -179,7 +187,7 @@ def _exchange_sheet(book: Workbook, rec: Recommendation) -> None:
         _cell(sheet, row, 2, cand.classification.cost_tier)
         _money(sheet, row, 3, e.swap_c.unit_cost_usd)
         _cell(sheet, row, 4, e.uses_per_unit)
-        _cell(sheet, row, 5, e.single_shot_pk)
+        _cell(sheet, row, 5, _pk_display(e))
         _cell(sheet, row, 6, ex.rounds_per_defeat)
         _money(sheet, row, 7, ex.cost_per_defeat_usd)
         _money(sheet, row, 8, ex.threat_cost_usd)
@@ -346,6 +354,65 @@ def _provenance_sheet(book: Workbook, rec: Recommendation) -> None:
     sheet.freeze_panes = "B2"
 
 
+def _sensitivity_sheet(book: Workbook, rec: Recommendation) -> None:
+    """Sheet: rank stability under the 9-scenario perturbation grid."""
+    sheet: Worksheet = book.create_sheet("Sensitivity")
+    _write_header(sheet, 1, ("System", "Best Rank", "Worst Rank", "Verdict"))
+    _set_widths(sheet, (30, 12, 12, 40))
+    if rec.sensitivity is None:
+        _cell(sheet, 2, 1, "No effectors passed; sensitivity not computed.")
+        return
+    _cell(sheet, 2, 1, rec.sensitivity.notes)
+    row: int = 4
+    for cand in rec.ranked:
+        low, high = rec.sensitivity.rank_ranges.get(cand.equipment.equipment_id, (0, 0))
+        _cell(sheet, row, 1, cand.equipment.name)
+        _cell(sheet, row, 2, low)
+        _cell(sheet, row, 3, high)
+        verdict_cell = sheet.cell(
+            row=row,
+            column=4,
+            value="Stable" if low == high else f"Varies rank {low}-{high}",
+        )
+        verdict_cell.font = BODY_FONT
+        verdict_cell.fill = GOOD_FILL if low == high else BAD_FILL
+        row += 1
+
+
+def _architecture_sheet(book: Workbook, rec: Recommendation) -> None:
+    """Sheet: layered defense proposal."""
+    sheet: Worksheet = book.create_sheet("Architecture")
+    _write_header(
+        sheet,
+        1,
+        ("Layer", "Band (km)", "System", "Effective Pk", "Magazine Cost (USD)"),
+    )
+    _set_widths(sheet, (12, 12, 32, 12, 20))
+    if rec.architecture is None:
+        _cell(sheet, 2, 1, "No effectors passed; architecture not proposed.")
+        return
+    arch = rec.architecture
+    row: int = 2
+    for layer in arch.layers:
+        _cell(sheet, row, 1, layer.band)
+        _cell(sheet, row, 2, f"{layer.band_range_km[0]:.0f}-{layer.band_range_km[1]:.0f}")
+        _cell(sheet, row, 3, layer.system_name)
+        _cell(sheet, row, 4, layer.effective_pk)
+        _money(sheet, row, 5, layer.magazine_cost_usd)
+        row += 1
+    _cell(sheet, row, 1, "Sensor")
+    _cell(sheet, row, 3, arch.sensor_name)
+    _money(sheet, row, 5, arch.sensor_cost_usd)
+    row += 2
+    _cell(sheet, row, 1, "Total magazine cost")
+    _money(sheet, row, 5, arch.total_magazine_cost_usd)
+    row += 1
+    _cell(sheet, row, 1, "Leakage probability")
+    _cell(sheet, row, 5, arch.leakage_probability)
+    row += 1
+    _cell(sheet, row, 1, arch.notes)
+
+
 def _context_sheet(book: Workbook, rec: Recommendation) -> None:
     """Sheet 8: retrieved RAG passages with section tags and scores."""
     sheet: Worksheet = book.create_sheet("Retrieved Context")
@@ -369,6 +436,8 @@ def write_xlsx(rec: Recommendation, out_path: Path, disclaimer: str) -> Path:
     _baseline_sheet(book, rec)
     _rejected_sheet(book, rec)
     _reference_sheet(book, rec)
+    _sensitivity_sheet(book, rec)
+    _architecture_sheet(book, rec)
     _provenance_sheet(book, rec)
     _context_sheet(book, rec)
     try:
